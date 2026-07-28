@@ -244,11 +244,13 @@ async def main(page: ft.Page):
 
         divisoria_linha = ft.Container(width=100, height=1, bgcolor="grey400")
 
+        # LOGO PNG NA TELA DE LOGIN
+        logo_login = ft.Image(src="logo.png", width=180, height=70, fit=ft.ImageFit.CONTAIN)
+
         conteudo = ft.Container(
             content=ft.Column([
                 ft.Row([ft.IconButton(icon=ft.Icons.DARK_MODE_OUTLINED, on_click=alternar_tema)], alignment=ft.MainAxisAlignment.END),
-                ft.Text("🏥", size=45), 
-                ft.Text("Plano Viver", size=30, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL), 
+                logo_login,
                 ft.Container(height=5), campo_cpf, campo_senha, txt_erro, 
                 ft.Container(height=5), btn_entrar, 
                 ft.Row([divisoria_linha, ft.Text("ou", color="grey500", size=11), divisoria_linha], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
@@ -420,7 +422,7 @@ async def main(page: ft.Page):
 
         conteudo = ft.Container(
             content=ft.Column([
-                ft.Text("🏥 Plano Viver", size=24, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL), 
+                ft.Image(src="logo.png", width=160, height=60, fit=ft.ImageFit.CONTAIN),
                 ft.Container(height=10), 
                 ft.Text("Quem está utilizando o app agora?", size=14, color="grey700"), 
                 ft.Container(height=15), 
@@ -461,15 +463,12 @@ async def main(page: ft.Page):
             )
         ])
 
+        # LOGO PNG NO CABEÇALHO DO MENU
+        logo_menu = ft.Image(src="logo.png", width=130, height=45, fit=ft.ImageFit.CONTAIN)
+
         topo_verde = ft.Container(
             content=ft.Row([
-                ft.Column([
-                    ft.Text("APP VIVER", color=ft.Colors.WHITE_70, size=10, weight=ft.FontWeight.W_500), 
-                    ft.Row([
-                        ft.Text("viver", size=28, weight=ft.FontWeight.BOLD, color="white", italic=True), 
-                        ft.Text("✨", size=16)
-                    ])
-                ], alignment=ft.MainAxisAlignment.CENTER),
+                logo_menu,
                 ft.Row([
                     icone_sininho,
                     ft.IconButton(icon=ft.Icons.DARK_MODE_OUTLINED, icon_color="white", on_click=alternar_tema)
@@ -1069,7 +1068,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     ft.app(
         target=main,
-        assets_dir=PASTA_PDFS,
+        assets_dir="assets",  # Aponta para a pasta de imagens assets
         host="0.0.0.0",
         port=port
     )
