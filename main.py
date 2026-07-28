@@ -5,6 +5,7 @@ import time
 import webbrowser
 import json
 import os
+import urllib.parse  # Correção: Usando urllib para codificação de URL em vez de requests.utils.quote
 
 # Imports para geração do PDF da Carteirinha
 from reportlab.lib.pagesizes import A4
@@ -151,11 +152,11 @@ def main(page: ft.Page):
         else:
             mensagem = f"Olá! Sou o {primeiro_nome}. Estou usando o aplicativo do Plano Viver e preciso de ajuda com o suporte."
             
-        url = f"https://api.whatsapp.com/send?phone={numero_whatsapp}&text={requests.utils.quote(mensagem)}"
+        url = f"https://api.whatsapp.com/send?phone={numero_whatsapp}&text={urllib.parse.quote(mensagem)}"
         page.launch_url(url)
 
     def abrir_google_maps(endereco):
-        url_maps = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(endereco)}"
+        url_maps = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(endereco)}"
         page.launch_url(url_maps)
 
     def exibir_snackbar(mensagem):
@@ -220,9 +221,10 @@ def main(page: ft.Page):
             time.sleep(0.8)
             processar_pos_login(CPF_TESTE)
 
-        btn_entrar = ft.Button(
+        btn_entrar = ft.FilledButton(
             content=ft.Text("Entrar na Área do Cliente", color="white", weight=ft.FontWeight.BOLD),
-            width=300, height=48, style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL, shape=ft.RoundedRectangleBorder(radius=12)),
+            width=300, height=48,
+            style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL, shape=ft.RoundedRectangleBorder(radius=12)),
             on_click=realizar_login
         )
 
@@ -232,7 +234,7 @@ def main(page: ft.Page):
                 ft.Text("Entrar com Biometria / Face ID", color=COR_PRINCIPAL, weight=ft.FontWeight.BOLD, size=12)
             ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
             width=300, height=48,
-            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12), side=ft.BorderSide(1.5, COR_PRINCIPAL)),
+            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12)),
             on_click=autenticar_biometria
         )
 
@@ -387,6 +389,10 @@ def main(page: ft.Page):
                 border_color=COR_PRINCIPAL
             )
 
+            def fechar_modal_dep(e):
+                bs_dependente.open = False
+                page.update()
+
             def salvar_dependente(e):
                 if campo_nome_dep.value:
                     novo_id = f"dep_{len(dados_carteirinhas)}"
@@ -401,7 +407,7 @@ def main(page: ft.Page):
                         "vencimento": "10/08/2026"
                     }
                     salvar_carteirinhas_localment()
-                    page.close(bs_dependente)
+                    fechar_modal_dep(e)
                     exibir_snackbar(f"✅ Dependente {campo_nome_dep.value} adicionado com sucesso!")
                     mostrar_tela_perfis()
 
@@ -412,8 +418,8 @@ def main(page: ft.Page):
                         ft.Text("➕ Adicionar Novo Dependente", size=18, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL),
                         campo_nome_dep,
                         dropdown_parentesco,
-                        ft.Button("Cadastrar Dependente", style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL), on_click=salvar_dependente),
-                        ft.TextButton("Cancelar", on_click=lambda e: page.close(bs_dependente))
+                        ft.FilledButton("Cadastrar Dependente", style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL), on_click=salvar_dependente),
+                        ft.TextButton("Cancelar", on_click=fechar_modal_dep)
                     ], spacing=12, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
                 )
             )
@@ -749,7 +755,7 @@ def main(page: ft.Page):
                 ft.Container(height=15),
                 ft.Row([
                     ft.OutlinedButton("🔄 Virar Cartão", on_click=girar_cartao_animado),
-                    ft.Button("📥 Baixar PDF", icon=ft.Icons.PICTURE_AS_PDF, on_click=baixar_carteirinha_pdf)
+                    ft.ElevatedButton("📥 Baixar PDF", icon=ft.Icons.PICTURE_AS_PDF, on_click=baixar_carteirinha_pdf)
                 ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
                 ft.Container(height=10), 
                 ft.TextButton("Voltar", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
@@ -964,6 +970,10 @@ def main(page: ft.Page):
 
                 img_qr = ft.Image(src=f"data:image/png;base64,{qr_base64}", width=180, height=180) if qr_base64 else ft.Icon(ft.Icons.QR_CODE_2, size=140)
 
+                def fechar_modal_pix(e):
+                    bs.open = False
+                    page.update()
+
                 bs = ft.BottomSheet(
                     content=ft.Container(
                         padding=20,
@@ -971,12 +981,12 @@ def main(page: ft.Page):
                             ft.Text("⚡ Pagamento via PIX", size=18, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL),
                             ft.Text(f"Valor: R$ {valor:.2f}", size=14, weight=ft.FontWeight.W_500),
                             img_qr,
-                            ft.Button(
+                            ft.ElevatedButton(
                                 "📋 Copiar Chave PIX Copia e Cola", 
                                 icon=ft.Icons.COPY, 
                                 on_click=lambda e: copiar_texto(payload_pix, "Chave PIX Copiada!")
                             ),
-                            ft.TextButton("Fechar", on_click=lambda e: page.close(bs))
+                            ft.TextButton("Fechar", on_click=fechar_modal_pix)
                         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10)
                     )
                 )
@@ -996,12 +1006,13 @@ def main(page: ft.Page):
 
                 status_texto, cor_status, is_pago = "Pendente", ft.Colors.ORANGE, False
                 if status in ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]:
-                    status_texto, cor_status, is_pago = "Pago", ft.Colors.GREEN, True
+                    status_texto, cor_status, is_pago = "Pago", ft.Colors.GREEN
+                    is_pago = True
                 elif status in ["OVERDUE", "DUNNING_REQUESTED"]:
                     status_texto, cor_status = "Vencido", ft.Colors.RED
 
                 botoes_acao = [
-                    ft.Button("⚡ Pagar via PIX", style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL), on_click=lambda e, fid=fatura_id, val=valor: abrir_modal_pix(fid, val)),
+                    ft.ElevatedButton("⚡ Pagar via PIX", style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL, color="white"), on_click=lambda e, fid=fatura_id, val=valor: abrir_modal_pix(fid, val)),
                     ft.IconButton(ft.Icons.COPY_ALL, icon_color=COR_PRINCIPAL, on_click=lambda e, fid=fatura_id: copiar_texto(fid, "ID copiado!"))
                 ] if not is_pago else [
                     ft.Icon(ft.Icons.CHECK_CIRCLE, color="green", size=18), 
