@@ -244,8 +244,8 @@ async def main(page: ft.Page):
 
         divisoria_linha = ft.Container(width=100, height=1, bgcolor="grey400")
 
-        # LOGO PNG NA TELA DE LOGIN
-        logo_login = ft.Image(src="logo.png", width=180, height=70, fit=ft.ImageFit.CONTAIN)
+        # LOGO PNG NA TELA DE LOGIN (CORRIGIDO: "contain")
+        logo_login = ft.Image(src="logo.png", width=180, height=70, fit="contain")
 
         conteudo = ft.Container(
             content=ft.Column([
@@ -422,7 +422,8 @@ async def main(page: ft.Page):
 
         conteudo = ft.Container(
             content=ft.Column([
-                ft.Image(src="logo.png", width=160, height=60, fit=ft.ImageFit.CONTAIN),
+                # LOGO CORRIGIDO PARA STRING "contain"
+                ft.Image(src="logo.png", width=160, height=60, fit="contain"),
                 ft.Container(height=10), 
                 ft.Text("Quem está utilizando o app agora?", size=14, color="grey700"), 
                 ft.Container(height=15), 
@@ -463,8 +464,8 @@ async def main(page: ft.Page):
             )
         ])
 
-        # LOGO PNG NO CABEÇALHO DO MENU
-        logo_menu = ft.Image(src="logo.png", width=130, height=45, fit=ft.ImageFit.CONTAIN)
+        # LOGO PNG NO CABEÇALHO DO MENU (CORRIGIDO: "contain")
+        logo_menu = ft.Image(src="logo.png", width=130, height=45, fit="contain")
 
         topo_verde = ft.Container(
             content=ft.Row([
