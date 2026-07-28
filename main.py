@@ -147,7 +147,7 @@ async def main(page: ft.Page):
         await page.update_async() if hasattr(page, 'update_async') else page.update()
 
     async def abrir_whatsapp(e, tipo_contato="suporte"):
-        numero_whatsapp = "554791362438" 
+        numero_whatsapp = "554730338021" 
         primeiro_nome = perfil_atual["nome"].split()[0].title()
         
         if tipo_contato == "assistente":
@@ -308,7 +308,7 @@ async def main(page: ft.Page):
         )
         await mudar_tela(conteudo)
 
-    # --- TELA: PAINEL DE ECONOMIA (TERCEIRA TELA DEDICADA) ---
+    # --- TELA: PAINEL DE ECONOMIA ---
     async def abrir_tela_economia(e=None):
         total_pago = sum(c["valor"] for c in dados_historico_consultas)
         total_particular = sum(c["particular"] for c in dados_historico_consultas)
@@ -374,80 +374,66 @@ async def main(page: ft.Page):
         )
         await mudar_tela(conteudo)
 
-    # --- TELA SELEÇÃO DE PERFIL COM INCLUSÃO DE DEPENDENTES ---
+    # --- TELA SELEÇÃO DE PERFIL ---
     async def mostrar_tela_perfis(e=None):
-        async def selecionar_perfil(chave, nome):
-            perfil_atual["chave"], perfil_atual["nome"] = chave, nome
+        async def selecionar_perfil(chave):
+            dados_carteirinhas_loc = await page.shared_preferences.get("dados_carteirinhas") if await page.shared_preferences.contains_key("dados_carteirinhas") else dados_carteirinhas
+            if not isinstance(dados_carteirinhas_loc, dict):
+                dados_carteirinhas_loc = dados_carteirinhas
+                
+            p_info = dados_carteirinhas_loc.get(chave, dados_carteirinhas_loc.get("titular"))
+            
+            perfil_atual["chave"] = chave
+            perfil_atual["nome"] = p_info["nome"]
+            
+            await exibir_snackbar(f"👤 Perfil alterado para: {p_info['nome'].split()[0]}")
             await mostrar_menu_inicial(None)
 
-        async def abrir_modal_novo_dependente(e):
-            campo_nome_dep = ft.TextField(label="Nome do Dependente", border_color=COR_PRINCIPAL)
-            dropdown_parentesco = ft.Dropdown(
-                label="Parentesco",
-                options=[
-                    ft.dropdown.Option("Filho(a)"),
-                    ft.dropdown.Option("Cônjuge"),
-                    ft.dropdown.Option("Pai/Mãe"),
-                    ft.dropdown.Option("Outro")
-                ],
-                border_color=COR_PRINCIPAL
-            )
+        async def solicitar_dependente_whatsapp(e):
+            numero_whatsapp = "554730338021"
+            primeiro_nome = perfil_atual["nome"].split()[0].title()
+            mensagem = f"Olá! Me chamo {primeiro_nome}, uso o app do Plano Viver e gostaria de solicitar a inclusão de um novo dependente no meu plano."
+            
+            url = f"https://api.whatsapp.com/send?phone={numero_whatsapp}&text={urllib.parse.quote(mensagem)}"
+            await page.launch_url_async(url) if hasattr(page, 'launch_url_async') else page.launch_url(url)
 
-            async def fechar_modal_dep(e):
-                bs_dependente.open = False
-                await page.update_async() if hasattr(page, 'update_async') else page.update()
-
-            async def salvar_dependente(e):
-                if campo_nome_dep.value:
-                    novo_id = f"dep_{len(dados_carteirinhas)}"
-                    nome_formatado = f"{campo_nome_dep.value.upper()} (DEP)"
-                    dados_carteirinhas[novo_id] = {
-                        "nome": nome_formatado,
-                        "numero": f"001.2345.678900-{15 + len(dados_carteirinhas)}",
-                        "plano": "VIVER GLOBAL (PLANO PRATA)",
-                        "validade": "12/2028",
-                        "avatar": "🧑",
-                        "status": "ATIVO",
-                        "vencimento": "10/08/2026"
-                    }
-                    await salvar_carteirinhas_localment()
-                    await fechar_modal_dep(e)
-                    await exibir_snackbar(f"✅ Dependente {campo_nome_dep.value} adicionado com sucesso!")
-                    await mostrar_tela_perfis()
-
-            bs_dependente = ft.BottomSheet(
-                content=ft.Container(
-                    padding=20,
-                    content=ft.Column([
-                        ft.Text("➕ Adicionar Novo Dependente", size=18, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL),
-                        campo_nome_dep,
-                        dropdown_parentesco,
-                        ft.FilledButton("Cadastrar Dependente", style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL), on_click=salvar_dependente),
-                        ft.TextButton("Cancelar", on_click=fechar_modal_dep)
-                    ], spacing=12, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-                )
-            )
-            page.open(bs_dependente)
-            await page.update_async() if hasattr(page, 'update_async') else page.update()
+        dados_carteirinhas_loc = await page.shared_preferences.get("dados_carteirinhas") if await page.shared_preferences.contains_key("dados_carteirinhas") else dados_carteirinhas
+        if not isinstance(dados_carteirinhas_loc, dict):
+            dados_carteirinhas_loc = dados_carteirinhas
 
         grid = ft.Row([
             ft.Container(
                 content=ft.Column([
-                    ft.Container(content=ft.Text(v["avatar"], size=35), width=75, height=75, border_radius=20, border=ft.Border.all(width=2, color=COR_PRINCIPAL), alignment=ft.Alignment(0, 0)), 
-                    ft.Text(v["nome"].split()[0], size=11, weight=ft.FontWeight.BOLD)
-                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER), 
-                on_click=lambda e, k=k, n=v["nome"]: selecionar_perfil(k, n)
-            ) for k, v in dados_carteirinhas.items()
-        ], alignment=ft.MainAxisAlignment.CENTER, spacing=10, wrap=True)
+                    ft.Container(
+                        content=ft.Text(v.get("avatar", "👤"), size=35), 
+                        width=75, height=75, 
+                        border_radius=20, 
+                        border=ft.Border.all(width=2, color=COR_PRINCIPAL if k == perfil_atual["chave"] else "#CBD5E1"), 
+                        bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST if k == perfil_atual["chave"] else "transparent",
+                        alignment=ft.Alignment(0, 0)
+                    ), 
+                    ft.Text(v["nome"].split()[0].title(), size=11, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL if k == perfil_atual["chave"] else "grey800")
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=5), 
+                on_click=lambda e, k=k: selecionar_perfil(k)
+            ) for k, v in dados_carteirinhas_loc.items()
+        ], alignment=ft.MainAxisAlignment.CENTER, spacing=15, wrap=True)
 
         conteudo = ft.Container(
             content=ft.Column([
                 ft.Text("🏥 Plano Viver", size=24, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL), 
                 ft.Container(height=10), 
                 ft.Text("Quem está utilizando o app agora?", size=14, color="grey700"), 
-                ft.Container(height=10), grid,
-                ft.Container(height=15),
-                ft.OutlinedButton("➕ Solicitar Novo Dependente", on_click=abrir_modal_novo_dependente),
+                ft.Container(height=15), 
+                grid,
+                ft.Container(height=20),
+                ft.FilledButton(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.SUPPORT_AGENT, size=18, color="white"),
+                        ft.Text("Solicitar Novo Dependente", color="white", weight=ft.FontWeight.BOLD)
+                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
+                    style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL, shape=ft.RoundedRectangleBorder(radius=10)),
+                    on_click=solicitar_dependente_whatsapp
+                ),
                 ft.Container(height=10),
                 ft.TextButton("Voltar para o Menu", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
@@ -456,12 +442,11 @@ async def main(page: ft.Page):
         await mudar_tela(conteudo)
 
     # =========================================================================
-    # 3️⃣ TELA: MENU PRINCIPAL (BANNER DE ECONOMIA REMOVIDO DAQUI)
+    # 3️⃣ TELA: MENU PRINCIPAL
     # =========================================================================
     async def mostrar_menu_inicial(e=None):
         primeiro_nome = perfil_atual["nome"].split()[0].title()
         
-        # Leitura segura dos dados das carteirinhas
         dados_carteirinhas_loc = await page.shared_preferences.get("dados_carteirinhas") if await page.shared_preferences.contains_key("dados_carteirinhas") else dados_carteirinhas
         if not isinstance(dados_carteirinhas_loc, dict):
             dados_carteirinhas_loc = dados_carteirinhas
@@ -608,7 +593,6 @@ async def main(page: ft.Page):
             colors=[COR_PRINCIPAL, COR_GRADIENT_FIM, "#003D37"]
         )
 
-        # LADO A: FRENTE
         frente_ui = ft.Container(
             key="frente_card",
             content=ft.Column([
@@ -630,7 +614,6 @@ async def main(page: ft.Page):
             shadow=ft.BoxShadow(blur_radius=12, color="grey400", offset=ft.Offset(0, 6))
         )
 
-        # LADO B: VERSO
         verso_ui = ft.Container(
             key="verso_card",
             content=ft.Column([
@@ -649,7 +632,7 @@ async def main(page: ft.Page):
                         ft.Text("• funeral em demais localidades", size=8.5, color="white")
                     ], spacing=4),
                     ft.Row([
-                        ft.Text("(47) 3033-8008", size=11, weight=ft.FontWeight.BOLD, color=COR_BORDA_GOLD),
+                        ft.Text("(47) 3033-8021", size=11, weight=ft.FontWeight.BOLD, color=COR_BORDA_GOLD),
                         ft.Text("• atendimento geral", size=8.5, color="white")
                     ], spacing=4),
                 ], spacing=5),
@@ -725,7 +708,7 @@ async def main(page: ft.Page):
                 tabela_suporte = [
                     [Paragraph("Capitais e Regiões Metropolitanas:", estilo_rotulo), Paragraph("3003-6773", estilo_valor)],
                     [Paragraph("Demais Localidades (Funeral):", estilo_rotulo), Paragraph("0800 709 8059", estilo_valor)],
-                    [Paragraph("Atendimento Geral Viver:", estilo_rotulo), Paragraph("(47) 3033-8008", estilo_valor)],
+                    [Paragraph("Atendimento Geral Viver:", estilo_rotulo), Paragraph("(47) 3033-8021", estilo_valor)],
                 ]
                 t_sup = Table(tabela_suporte, colWidths=[180, 260])
                 t_sup.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 6)]))
@@ -745,7 +728,7 @@ async def main(page: ft.Page):
 
         conteudo = ft.Container(
             content=ft.Column([
-                ft.Text("💳 Carteirinha Digital", size=24, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL), 
+                ft.Text("💳 Carteirinha Digital", size=22, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL), 
                 ft.Container(height=10), 
                 cartao_animado,
                 ft.Container(height=15),
@@ -760,13 +743,12 @@ async def main(page: ft.Page):
         )
         await mudar_tela(conteudo)
 
-    # --- HISTÓRICO DE CONSULTAS (COM A NOVA ABA DE ECONOMIA) ---
+    # --- HISTÓRICO DE CONSULTAS ---
     async def abrir_tela_historico(e=None):
         total_pago = sum(c["valor"] for c in dados_historico_consultas)
         total_particular = sum(c["particular"] for c in dados_historico_consultas)
         total_economizado = total_particular - total_pago
 
-        # Aba/Banner compacto de economia inserido no topo
         aba_economia = ft.Container(
             content=ft.Row([
                 ft.Row([
@@ -819,7 +801,7 @@ async def main(page: ft.Page):
         await mudar_tela(conteudo)
 
     # =========================================================================
-    # 5️⃣ TELA: REDE CREDENCIADA (COM INTEGRAÇÃO MAPS/GPS)
+    # 5️⃣ TELA: REDE CREDENCIADA
     # =========================================================================
     async def abrir_tela_rede(e=None):
         lista_locais = ft.ListView(expand=1, spacing=10, padding=5)
