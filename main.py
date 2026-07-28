@@ -142,7 +142,6 @@ def main(page: ft.Page):
         page.bgcolor = "#111827" if page.theme_mode == ft.ThemeMode.DARK else "#F1F5F9"
         page.update()
 
-    # --- MELHORIA: LINK DO WHATSAPP COMPATÍVEL COM CELULAR E WEB ---
     def abrir_whatsapp(e, tipo_contato="suporte"):
         numero_whatsapp = "554791362438" 
         primeiro_nome = perfil_atual["nome"].split()[0].title()
@@ -155,7 +154,6 @@ def main(page: ft.Page):
         url = f"https://api.whatsapp.com/send?phone={numero_whatsapp}&text={requests.utils.quote(mensagem)}"
         page.launch_url(url)
 
-    # --- MELHORIA: ABRIR GOOGLE MAPS DIRETO ---
     def abrir_google_maps(endereco):
         url_maps = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(endereco)}"
         page.launch_url(url_maps)
@@ -370,7 +368,7 @@ def main(page: ft.Page):
         )
         mudar_tela(conteudo)
 
-    # --- MELHORIA: TELA SELEÇÃO DE PERFIL COM INCLUSÃO DE DEPENDENTES ---
+    # --- TELA SELEÇÃO DE PERFIL COM INCLUSÃO DE DEPENDENTES ---
     def mostrar_tela_perfis():
         def selecionar_perfil(chave, nome):
             perfil_atual["chave"], perfil_atual["nome"] = chave, nome
@@ -954,6 +952,10 @@ def main(page: ft.Page):
         faturas_asaas = obtener_boletos_asaas(CPF_TESTE, perfil_atual["nome"])
         lista_cards = []
 
+        def copiar_texto(texto, msg):
+            page.set_clipboard(texto)
+            exibir_snackbar(msg)
+
         def abrir_modal_pix(fatura_id, valor):
             pix_dados = obtener_pix_asaas(fatura_id)
             if pix_dados and pix_dados.get("payload"):
@@ -972,7 +974,7 @@ def main(page: ft.Page):
                             ft.Button(
                                 "📋 Copiar Chave PIX Copia e Cola", 
                                 icon=ft.Icons.COPY, 
-                                on_click=lambda e: page.set_clipboard(payload_pix) or exibir_snackbar("Chave PIX Copiada!")
+                                on_click=lambda e: copiar_texto(payload_pix, "Chave PIX Copiada!")
                             ),
                             ft.TextButton("Fechar", on_click=lambda e: page.close(bs))
                         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10)
@@ -994,9 +996,17 @@ def main(page: ft.Page):
 
                 status_texto, cor_status, is_pago = "Pendente", ft.Colors.ORANGE, False
                 if status in ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]:
-                    status_texto, cor_status, is_pago = "Pago", ft.Colors.GREEN
+                    status_texto, cor_status, is_pago = "Pago", ft.Colors.GREEN, True
                 elif status in ["OVERDUE", "DUNNING_REQUESTED"]:
                     status_texto, cor_status = "Vencido", ft.Colors.RED
+
+                botoes_acao = [
+                    ft.Button("⚡ Pagar via PIX", style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL), on_click=lambda e, fid=fatura_id, val=valor: abrir_modal_pix(fid, val)),
+                    ft.IconButton(ft.Icons.COPY_ALL, icon_color=COR_PRINCIPAL, on_click=lambda e, fid=fatura_id: copiar_texto(fid, "ID copiado!"))
+                ] if not is_pago else [
+                    ft.Icon(ft.Icons.CHECK_CIRCLE, color="green", size=18), 
+                    ft.Text("Pagamento confirmado", size=11, color="grey600")
+                ]
 
                 card = ft.Container(
                     content=ft.Column([
@@ -1006,10 +1016,7 @@ def main(page: ft.Page):
                         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                         ft.Text(f"Valor: R$ {valor:.2f}", size=15, color="grey800"),
                         ft.Divider(height=10, color="grey300"),
-                        ft.Row([
-                            ft.Button("⚡ Pagar via PIX", style=ft.ButtonStyle(bgcolor=COR_PRINCIPAL), on_click=lambda e, fid=fatura_id, v=valor: abrir_modal_pix(fid, v)),
-                            ft.IconButton(ft.Icons.COPY_ALL, icon_color=COR_PRINCIPAL, on_click=lambda e, fid=fatura_id: page.set_clipboard(fid) or exibir_snackbar("ID copiado!"))
-                        ] if not is_pago else [ft.Icon(ft.Icons.CHECK_CIRCLE, color="green", size=18), ft.Text("Pagamento confirmado", size=11, color="grey600")])
+                        ft.Row(botoes_acao)
                     ]), border_radius=12, padding=15, border=ft.Border.all(width=1, color="#E2E8F0"), bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
                     shadow=ft.BoxShadow(blur_radius=5, color="grey200", offset=ft.Offset(0, 3))
                 )
@@ -1047,8 +1054,8 @@ def main(page: ft.Page):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    ft.run(
-        main,
+    ft.app(
+        target=main,
         assets_dir=PASTA_PDFS,
         host="0.0.0.0",
         port=port
