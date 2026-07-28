@@ -5,7 +5,7 @@ import time
 import webbrowser
 import json
 import os
-import urllib.parse  # Correção: Usando urllib para codificação de URL em vez de requests.utils.quote
+import urllib.parse  # Usando urllib para codificação de URL
 
 # Imports para geração do PDF da Carteirinha
 from reportlab.lib.pagesizes import A4
@@ -96,7 +96,7 @@ def obtener_pix_asaas(payment_id):
 # 📱 CÓDIGO DA APLICAÇÃO FLET
 # =========================================================================
 
-def main(page: ft.Page):
+async def main(page: ft.Page):
     CPF_TESTE = "077.125.370-20" 
     SENHA_TESTE = "1234"
     
@@ -119,18 +119,21 @@ def main(page: ft.Page):
         "dep2": {"nome": "MARIA DA SILVA (DEP)", "numero": "001.2345.678900-14", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👧", "status": "ATIVO", "vencimento": "10/08/2026"}
     }
 
-    # Restaura dados salvos localmente se existirem
-    if page.shared_preferences.contains_key("dados_carteirinhas"):
-        try:
-            dados_carteirinhas = page.shared_preferences.get("dados_carteirinhas")
-        except Exception:
+    # Restaura dados salvos localmente se existirem (Assíncrono)
+    try:
+        has_key = await page.shared_preferences.contains_key("dados_carteirinhas")
+        if has_key:
+            dados_carteirinhas = await page.shared_preferences.get("dados_carteirinhas")
+            if not isinstance(dados_carteirinhas, dict):
+                dados_carteirinhas = dados_padrao_carteirinhas
+        else:
             dados_carteirinhas = dados_padrao_carteirinhas
-    else:
+            await page.shared_preferences.set("dados_carteirinhas", dados_carteirinhas)
+    except Exception:
         dados_carteirinhas = dados_padrao_carteirinhas
-        page.shared_preferences.set("dados_carteirinhas", dados_carteirinhas)
 
-    def salvar_carteirinhas_localment():
-        page.shared_preferences.set("dados_carteirinhas", dados_carteirinhas)
+    async def salvar_carteirinhas_localment():
+        await page.shared_preferences.set("dados_carteirinhas", dados_carteirinhas)
 
     dados_historico_consultas = [
         {"data": "10/05/2026", "especialidade": "Cardiologia", "medico": "Dr. Fernando Rosa", "local": "Prontocor Clínica", "valor": 230.00, "particular": 450.00, "status": "Realizada"},
@@ -138,12 +141,12 @@ def main(page: ft.Page):
         {"data": "15/01/2026", "especialidade": "Clínico Geral", "medico": "Dr. Henrique Silva", "local": "Clínica Voe Saúde", "valor": 180.00, "particular": 350.00, "status": "Realizada"}
     ]
 
-    def alternar_tema(e):
+    async def alternar_tema(e):
         page.theme_mode = ft.ThemeMode.DARK if page.theme_mode == ft.ThemeMode.LIGHT else ft.ThemeMode.LIGHT
         page.bgcolor = "#111827" if page.theme_mode == ft.ThemeMode.DARK else "#F1F5F9"
-        page.update()
+        await page.update_async() if hasattr(page, 'update_async') else page.update()
 
-    def abrir_whatsapp(e, tipo_contato="suporte"):
+    async def abrir_whatsapp(e, tipo_contato="suporte"):
         numero_whatsapp = "554791362438" 
         primeiro_nome = perfil_atual["nome"].split()[0].title()
         
@@ -153,24 +156,25 @@ def main(page: ft.Page):
             mensagem = f"Olá! Sou o {primeiro_nome}. Estou usando o aplicativo do Plano Viver e preciso de ajuda com o suporte."
             
         url = f"https://api.whatsapp.com/send?phone={numero_whatsapp}&text={urllib.parse.quote(mensagem)}"
-        page.launch_url(url)
+        await page.launch_url_async(url) if hasattr(page, 'launch_url_async') else page.launch_url(url)
 
-    def abrir_google_maps(endereco):
+    async def abrir_google_maps(endereco):
         url_maps = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(endereco)}"
-        page.launch_url(url_maps)
+        await page.launch_url_async(url_maps) if hasattr(page, 'launch_url_async') else page.launch_url(url_maps)
 
-    def exibir_snackbar(mensagem):
+    async def exibir_snackbar(mensagem):
         snack = ft.SnackBar(
             content=ft.Text(mensagem, weight=ft.FontWeight.BOLD, color="white"), 
             bgcolor=COR_PRINCIPAL, 
             duration=3000
         )
         page.open(snack)
+        await page.update_async() if hasattr(page, 'update_async') else page.update()
 
-    def mudar_tela(novo_conteudo):
+    async def mudar_tela(novo_conteudo):
         page.clean()
         page.add(novo_conteudo)
-        page.update()
+        await page.update_async() if hasattr(page, 'update_async') else page.update()
 
     # --- SESSÃO ---
     def salvar_sessao(cpf):
@@ -181,45 +185,45 @@ def main(page: ft.Page):
         except Exception as e:
             print(f"Erro ao salvar sessão: {e}", flush=True)
 
-    def encerrar_sessao(e=None):
+    async def encerrar_sessao(e=None):
         if os.path.exists(ARQUIVO_SESSAO):
             os.remove(ARQUIVO_SESSAO)
-        exibir_snackbar("Sessão encerrada.")
-        mostrar_tela_login()
+        await exibir_snackbar("Sessão encerrada.")
+        await mostrar_tela_login()
 
-    def processar_pos_login(cpf_usuario):
+    async def processar_pos_login(cpf_usuario):
         salvar_sessao(cpf_usuario)
-        mostrar_menu_inicial(None)
+        await mostrar_menu_inicial(None)
 
     # =========================================================================
     # 1️⃣ TELA DE LOGIN
     # =========================================================================
-    def mostrar_tela_login():
+    async def mostrar_tela_login():
         txt_erro = ft.Text("", color=ft.Colors.RED_600, size=13, weight=ft.FontWeight.BOLD)
         campo_cpf = ft.TextField(label="Digite seu CPF", hint_text="000.000.000-00", width=300, border_radius=12, border_color=COR_PRINCIPAL)
         campo_senha = ft.TextField(label="Digite sua Senha", password=True, can_reveal_password=True, width=300, border_radius=12, border_color=COR_PRINCIPAL)
 
-        def formatar_cpf(e):
+        async def formatar_cpf(e):
             apenas_numeros = "".join([c for c in campo_cpf.value if c.isdigit()])[:11]
             if len(apenas_numeros) <= 3: campo_cpf.value = apenas_numeros
             elif len(apenas_numeros) <= 6: campo_cpf.value = f"{apenas_numeros[:3]}.{apenas_numeros[3:]}"
             elif len(apenas_numeros) <= 9: campo_cpf.value = f"{apenas_numeros[:3]}.{apenas_numeros[3:6]}.{apenas_numeros[6:]}"
             else: campo_cpf.value = f"{apenas_numeros[:3]}.{apenas_numeros[3:6]}.{apenas_numeros[6:9]}-{apenas_numeros[9:]}"
-            page.update()
+            await page.update_async() if hasattr(page, 'update_async') else page.update()
 
         campo_cpf.on_change = formatar_cpf
 
-        def realizar_login(e):
+        async def realizar_login(e):
             if campo_cpf.value == CPF_TESTE and campo_senha.value == SENHA_TESTE:
-                processar_pos_login(campo_cpf.value)
+                await processar_pos_login(campo_cpf.value)
             else:
                 txt_erro.value = "CPF ou Senha incorretos!"
-                page.update()
+                await page.update_async() if hasattr(page, 'update_async') else page.update()
 
-        def autenticar_biometria(e):
-            exibir_snackbar("👆 Autenticando por Biometria / Face ID...")
+        async def autenticar_biometria(e):
+            await exibir_snackbar("👆 Autenticando por Biometria / Face ID...")
             time.sleep(0.8)
-            processar_pos_login(CPF_TESTE)
+            await processar_pos_login(CPF_TESTE)
 
         btn_entrar = ft.FilledButton(
             content=ft.Text("Entrar na Área do Cliente", color="white", weight=ft.FontWeight.BOLD),
@@ -252,22 +256,22 @@ def main(page: ft.Page):
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, spacing=8),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16, padding=10
         )
-        mudar_tela(conteudo)
+        await mudar_tela(conteudo)
 
     # =========================================================================
     # 2️⃣ TELA DE AVISOS / NOTIFICAÇÕES
     # =========================================================================
-    def mostrar_tela_notificacoes(e=None):
+    async def mostrar_tela_notificacoes(e=None):
         dados_notificacoes = [
             {
                 "icone": "⚠️", "titulo": "Atenção ao Boleto", 
                 "mensagem": "Seu boleto mensal está disponível. Pague via PIX sem taxas.", "data": "Hoje",
-                "acao_texto": "💳 Pagar Agora", "acao": lambda e: abrir_tela_boletos(e)
+                "acao_texto": "💳 Pagar Agora", "acao": abrir_tela_boletos
             },
             {
                 "icone": "🩺", "titulo": "Consulta Confirmada", 
                 "mensagem": "Sua última consulta foi registrada com sucesso no sistema.", "data": "Ontem",
-                "acao_texto": "📋 Ver Histórico", "acao": lambda e: abrir_tela_historico(e)
+                "acao_texto": "📋 Ver Histórico", "acao": abrir_tela_historico
             }
         ]
 
@@ -302,10 +306,10 @@ def main(page: ft.Page):
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
-        mudar_tela(conteudo)
+        await mudar_tela(conteudo)
 
     # --- TELA: PAINEL DE ECONOMIA ---
-    def abrir_tela_economia(e):
+    async def abrir_tela_economia(e=None):
         total_pago = sum(c["valor"] for c in dados_historico_consultas)
         total_particular = sum(c["particular"] for c in dados_historico_consultas)
         total_economizado = total_particular - total_pago
@@ -368,15 +372,15 @@ def main(page: ft.Page):
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
-        mudar_tela(conteudo)
+        await mudar_tela(conteudo)
 
     # --- TELA SELEÇÃO DE PERFIL COM INCLUSÃO DE DEPENDENTES ---
-    def mostrar_tela_perfis():
-        def selecionar_perfil(chave, nome):
+    async def mostrar_tela_perfis(e=None):
+        async def selecionar_perfil(chave, nome):
             perfil_atual["chave"], perfil_atual["nome"] = chave, nome
-            mostrar_menu_inicial(None)
+            await mostrar_menu_inicial(None)
 
-        def abrir_modal_novo_dependente(e):
+        async def abrir_modal_novo_dependente(e):
             campo_nome_dep = ft.TextField(label="Nome do Dependente", border_color=COR_PRINCIPAL)
             dropdown_parentesco = ft.Dropdown(
                 label="Parentesco",
@@ -389,11 +393,11 @@ def main(page: ft.Page):
                 border_color=COR_PRINCIPAL
             )
 
-            def fechar_modal_dep(e):
+            async def fechar_modal_dep(e):
                 bs_dependente.open = False
-                page.update()
+                await page.update_async() if hasattr(page, 'update_async') else page.update()
 
-            def salvar_dependente(e):
+            async def salvar_dependente(e):
                 if campo_nome_dep.value:
                     novo_id = f"dep_{len(dados_carteirinhas)}"
                     nome_formatado = f"{campo_nome_dep.value.upper()} (DEP)"
@@ -406,10 +410,10 @@ def main(page: ft.Page):
                         "status": "ATIVO",
                         "vencimento": "10/08/2026"
                     }
-                    salvar_carteirinhas_localment()
-                    fechar_modal_dep(e)
-                    exibir_snackbar(f"✅ Dependente {campo_nome_dep.value} adicionado com sucesso!")
-                    mostrar_tela_perfis()
+                    await salvar_carteirinhas_localment()
+                    await fechar_modal_dep(e)
+                    await exibir_snackbar(f"✅ Dependente {campo_nome_dep.value} adicionado com sucesso!")
+                    await mostrar_tela_perfis()
 
             bs_dependente = ft.BottomSheet(
                 content=ft.Container(
@@ -424,6 +428,7 @@ def main(page: ft.Page):
                 )
             )
             page.open(bs_dependente)
+            await page.update_async() if hasattr(page, 'update_async') else page.update()
 
         grid = ft.Row([
             ft.Container(
@@ -448,14 +453,20 @@ def main(page: ft.Page):
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
-        mudar_tela(conteudo)
+        await mudar_tela(conteudo)
 
     # =========================================================================
     # 3️⃣ TELA: MENU PRINCIPAL
     # =========================================================================
-    def mostrar_menu_inicial(e):
+    async def mostrar_menu_inicial(e=None):
         primeiro_nome = perfil_atual["nome"].split()[0].title()
-        dados_p = dados_carteirinhas.get(perfil_atual["chave"], dados_carteirinhas["titular"])
+        
+        # Leitura segura dos dados das carteirinhas
+        dados_carteirinhas_loc = await page.shared_preferences.get("dados_carteirinhas") if await page.shared_preferences.contains_key("dados_carteirinhas") else dados_carteirinhas
+        if not isinstance(dados_carteirinhas_loc, dict):
+            dados_carteirinhas_loc = dados_carteirinhas
+            
+        dados_p = dados_carteirinhas_loc.get(perfil_atual["chave"], dados_carteirinhas_loc.get("titular"))
 
         total_pago = sum(c["valor"] for c in dados_historico_consultas)
         total_particular = sum(c["particular"] for c in dados_historico_consultas)
@@ -574,7 +585,7 @@ def main(page: ft.Page):
             content=ft.Row([
                 ft.IconButton(icon=ft.Icons.CREDIT_CARD, icon_color=COR_PRINCIPAL, on_click=abrir_tela_carteirinha, tooltip="Carteirinha"), 
                 ft.IconButton(icon=ft.Icons.CHAT_BUBBLE, icon_color=COR_PRINCIPAL, on_click=lambda e: abrir_whatsapp(e, "suporte"), tooltip="Atendimento"), 
-                ft.IconButton(icon=ft.Icons.SUPERVISOR_ACCOUNT, icon_color=COR_PRINCIPAL, on_click=lambda e: mostrar_tela_perfis(), tooltip="Trocar Perfil"), 
+                ft.IconButton(icon=ft.Icons.SUPERVISOR_ACCOUNT, icon_color=COR_PRINCIPAL, on_click=mostrar_tela_perfis, tooltip="Trocar Perfil"), 
                 ft.IconButton(icon=ft.Icons.LOGOUT, icon_color=ft.Colors.RED_600, on_click=encerrar_sessao, tooltip="Sair")
             ], alignment=ft.MainAxisAlignment.SPACE_AROUND), 
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST, height=55, width=390,
@@ -597,13 +608,17 @@ def main(page: ft.Page):
             ], spacing=0, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
-        mudar_tela(layout_celular)
+        await mudar_tela(layout_celular)
 
     # =========================================================================
     # 4️⃣ TELA: CARTEIRINHA DIGITAL
     # =========================================================================
-    def abrir_tela_carteirinha(e):
-        dados = dados_carteirinhas.get(perfil_atual["chave"], dados_carteirinhas["titular"])
+    async def abrir_tela_carteirinha(e=None):
+        dados_carteirinhas_loc = await page.shared_preferences.get("dados_carteirinhas") if await page.shared_preferences.contains_key("dados_carteirinhas") else dados_carteirinhas
+        if not isinstance(dados_carteirinhas_loc, dict):
+            dados_carteirinhas_loc = dados_carteirinhas
+
+        dados = dados_carteirinhas_loc.get(perfil_atual["chave"], dados_carteirinhas_loc.get("titular"))
         mostrando_frente = [True]
 
         degrade_carteirinha = ft.LinearGradient(
@@ -675,14 +690,14 @@ def main(page: ft.Page):
             switch_out_curve=ft.AnimationCurve.EASE_IN_OUT
         )
 
-        def girar_cartao_animado(e):
+        async def girar_cartao_animado(e):
             mostrando_frente[0] = not mostrando_frente[0]
             cartao_animado.content = frente_ui if mostrando_frente[0] else verso_ui
-            cartao_animado.update()
+            await page.update_async() if hasattr(page, 'update_async') else page.update()
 
-        def baixar_carteirinha_pdf(e):
+        async def baixar_carteirinha_pdf(e):
             try:
-                dados_c = dados_carteirinhas.get(perfil_atual["chave"], dados_carteirinhas["titular"])
+                dados_c = dados
                 nome_arquivo = f"carteirinha_{perfil_atual['chave']}.pdf"
                 caminho_completo = os.path.join(PASTA_PDFS, nome_arquivo)
 
@@ -740,12 +755,12 @@ def main(page: ft.Page):
 
                 doc.build(elementos)
 
-                page.launch_url(f"/static/{nome_arquivo}")
-                exibir_snackbar("✅ Carteirinha gerada! Baixando...")
+                await page.launch_url_async(f"/static/{nome_arquivo}") if hasattr(page, 'launch_url_async') else page.launch_url(f"/static/{nome_arquivo}")
+                await exibir_snackbar("✅ Carteirinha gerada! Baixando...")
 
             except Exception as err:
                 print(f"Erro PDF: {err}", flush=True)
-                exibir_snackbar("❌ Erro ao gerar PDF. Verifique os módulos instalados.")
+                await exibir_snackbar("❌ Erro ao gerar PDF. Verifique os módulos instalados.")
 
         conteudo = ft.Container(
             content=ft.Column([
@@ -762,10 +777,10 @@ def main(page: ft.Page):
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
-        mudar_tela(conteudo)
+        await mudar_tela(conteudo)
 
     # --- HISTÓRICO DE CONSULTAS ---
-    def abrir_tela_historico(e):
+    async def abrir_tela_historico(e=None):
         lista_consultas = ft.ListView(expand=1, spacing=10, padding=5)
 
         for c in dados_historico_consultas:
@@ -797,12 +812,12 @@ def main(page: ft.Page):
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
-        mudar_tela(conteudo)
+        await mudar_tela(conteudo)
 
     # =========================================================================
     # 5️⃣ TELA: REDE CREDENCIADA (COM INTEGRAÇÃO MAPS/GPS)
     # =========================================================================
-    def abrir_tela_rede(e):
+    async def abrir_tela_rede(e=None):
         lista_locais = ft.ListView(expand=1, spacing=10, padding=5)
 
         locais_planilha = [
@@ -818,7 +833,7 @@ def main(page: ft.Page):
             {"nome": "Drogaria Catarinense", "categoria": "Farmácia", "bairro": "Iririú", "esp": "Farmácia Parceira Viver", "end": "Rua Iririú, 2300 - Iririú, Joinville - SC", "tel": "(47) 3427-4400", "valor": "Desconto na hora no CPF"}
         ]
 
-        def renderizar_lista(e=None):
+        async def renderizar_lista(e=None):
             lista_locais.controls.clear()
             termo = campo_pesquisa.value.lower() if campo_pesquisa.value else ""
             bairro_filtro = dropdown_bairro.value
@@ -869,7 +884,7 @@ def main(page: ft.Page):
                 )
 
             try:
-                lista_locais.update()
+                await page.update_async() if hasattr(page, 'update_async') else page.update()
             except Exception:
                 pass
 
@@ -926,7 +941,7 @@ def main(page: ft.Page):
             ], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
         ], spacing=8, width=340)
 
-        renderizar_lista()
+        await renderizar_lista()
 
         conteudo = ft.Container(
             content=ft.Column([
@@ -938,12 +953,12 @@ def main(page: ft.Page):
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
         
-        mudar_tela(conteudo)
+        await mudar_tela(conteudo)
 
     # =========================================================================
     # 6️⃣ TELA: BOLETOS & ASAAS
     # =========================================================================
-    def abrir_tela_boletos(e):
+    async def abrir_tela_boletos(e=None):
         progresso = ft.ProgressRing(color=COR_PRINCIPAL)
         carregando = ft.Container(
             content=ft.Column([
@@ -953,16 +968,16 @@ def main(page: ft.Page):
             width=390, height=740, bgcolor=ft.Colors.SURFACE, 
             shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
-        mudar_tela(carregando)
+        await mudar_tela(carregando)
 
         faturas_asaas = obtener_boletos_asaas(CPF_TESTE, perfil_atual["nome"])
         lista_cards = []
 
-        def copiar_texto(texto, msg):
-            page.set_clipboard(texto)
-            exibir_snackbar(msg)
+        async def copiar_texto(texto, msg):
+            await page.set_clipboard_async(texto) if hasattr(page, 'set_clipboard_async') else page.set_clipboard(texto)
+            await exibir_snackbar(msg)
 
-        def abrir_modal_pix(fatura_id, valor):
+        async def abrir_modal_pix(fatura_id, valor):
             pix_dados = obtener_pix_asaas(fatura_id)
             if pix_dados and pix_dados.get("payload"):
                 payload_pix = pix_dados["payload"]
@@ -970,9 +985,9 @@ def main(page: ft.Page):
 
                 img_qr = ft.Image(src=f"data:image/png;base64,{qr_base64}", width=180, height=180) if qr_base64 else ft.Icon(ft.Icons.QR_CODE_2, size=140)
 
-                def fechar_modal_pix(e):
+                async def fechar_modal_pix(e):
                     bs.open = False
-                    page.update()
+                    await page.update_async() if hasattr(page, 'update_async') else page.update()
 
                 bs = ft.BottomSheet(
                     content=ft.Container(
@@ -991,8 +1006,9 @@ def main(page: ft.Page):
                     )
                 )
                 page.open(bs)
+                await page.update_async() if hasattr(page, 'update_async') else page.update()
             else:
-                exibir_snackbar("Não foi possível gerar o PIX para esta fatura no momento.")
+                await exibir_snackbar("Não foi possível gerar o PIX para esta fatura no momento.")
 
         if faturas_asaas:
             for fatura in faturas_asaas:
@@ -1054,13 +1070,13 @@ def main(page: ft.Page):
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
-        mudar_tela(conteudo)
+        await mudar_tela(conteudo)
 
     # --- INICIALIZAÇÃO DA APLICAÇÃO ---
     if os.path.exists(ARQUIVO_SESSAO):
         os.remove(ARQUIVO_SESSAO)
     
-    mostrar_tela_login()
+    await mostrar_tela_login()
 
 
 if __name__ == "__main__":
