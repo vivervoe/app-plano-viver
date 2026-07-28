@@ -308,7 +308,7 @@ async def main(page: ft.Page):
         )
         await mudar_tela(conteudo)
 
-    # --- TELA: PAINEL DE ECONOMIA ---
+    # --- TELA: PAINEL DE ECONOMIA (TERCEIRA TELA DEDICADA) ---
     async def abrir_tela_economia(e=None):
         total_pago = sum(c["valor"] for c in dados_historico_consultas)
         total_particular = sum(c["particular"] for c in dados_historico_consultas)
@@ -368,7 +368,7 @@ async def main(page: ft.Page):
                 ft.Container(height=10),
                 ft.Text("Detalhamento por Atendimento:", size=13, weight=ft.FontWeight.BOLD, color="grey800"),
                 ft.Container(content=lista_detalhada, width=340, height=330),
-                ft.TextButton("Voltar para o Menu", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
+                ft.TextButton("Voltar para Histórico", icon=ft.Icons.ARROW_BACK, on_click=abrir_tela_historico)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
@@ -456,7 +456,7 @@ async def main(page: ft.Page):
         await mudar_tela(conteudo)
 
     # =========================================================================
-    # 3️⃣ TELA: MENU PRINCIPAL
+    # 3️⃣ TELA: MENU PRINCIPAL (BANNER DE ECONOMIA REMOVIDO DAQUI)
     # =========================================================================
     async def mostrar_menu_inicial(e=None):
         primeiro_nome = perfil_atual["nome"].split()[0].title()
@@ -467,10 +467,6 @@ async def main(page: ft.Page):
             dados_carteirinhas_loc = dados_carteirinhas
             
         dados_p = dados_carteirinhas_loc.get(perfil_atual["chave"], dados_carteirinhas_loc.get("titular"))
-
-        total_pago = sum(c["valor"] for c in dados_historico_consultas)
-        total_particular = sum(c["particular"] for c in dados_historico_consultas)
-        total_economizado = total_particular - total_pago
 
         icone_sininho = ft.Stack([
             ft.IconButton(icon=ft.Icons.NOTIFICATIONS_OUTLINED, icon_color="white", on_click=mostrar_tela_notificacoes, tooltip="Avisos"),
@@ -526,20 +522,6 @@ async def main(page: ft.Page):
             bgcolor="white", padding=ft.Padding(12, 8, 12, 8), border_radius=12, width=350,
             border=ft.Border.all(width=1, color="#CBD5E1"),
             shadow=ft.BoxShadow(blur_radius=4, color="grey200", offset=ft.Offset(0, 2))
-        )
-
-        banner_economia = ft.Container(
-            content=ft.Row([
-                ft.Icon(ft.Icons.SAVINGS, color=ft.Colors.GREEN_800, size=22),
-                ft.Column([
-                    ft.Text("Sua Economia em 2026", weight=ft.FontWeight.BOLD, size=11, color=ft.Colors.GREEN_900),
-                    ft.Text(f"Você já economizou R$ {total_economizado:.2f}", size=10.5, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_700)
-                ], spacing=1),
-                ft.TextButton("Ver", on_click=abrir_tela_economia)
-            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            bgcolor="#E8F5E9", padding=ft.Padding(12, 4, 10, 4), border_radius=10, width=350,
-            border=ft.Border.all(width=1, color="#A5D6A7"),
-            on_click=abrir_tela_economia
         )
 
         texto_saudacao = ft.Container(
@@ -598,10 +580,9 @@ async def main(page: ft.Page):
                 ft.Container(
                     content=ft.Column([
                         card_status_plano,
-                        banner_economia, 
                         texto_saudacao, 
                         grid_botoes
-                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10), 
+                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15), 
                     expand=True
                 ), 
                 barra_inferior
@@ -779,8 +760,29 @@ async def main(page: ft.Page):
         )
         await mudar_tela(conteudo)
 
-    # --- HISTÓRICO DE CONSULTAS ---
+    # --- HISTÓRICO DE CONSULTAS (COM A NOVA ABA DE ECONOMIA) ---
     async def abrir_tela_historico(e=None):
+        total_pago = sum(c["valor"] for c in dados_historico_consultas)
+        total_particular = sum(c["particular"] for c in dados_historico_consultas)
+        total_economizado = total_particular - total_pago
+
+        # Aba/Banner compacto de economia inserido no topo
+        aba_economia = ft.Container(
+            content=ft.Row([
+                ft.Row([
+                    ft.Icon(ft.Icons.SAVINGS, color=ft.Colors.GREEN_800, size=20),
+                    ft.Column([
+                        ft.Text("Sua Economia em 2026", weight=ft.FontWeight.BOLD, size=11, color=ft.Colors.GREEN_900),
+                        ft.Text(f"Total poupado: R$ {total_economizado:.2f}", size=10, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_700)
+                    ], spacing=0)
+                ], spacing=8),
+                ft.Icon(ft.Icons.CHEVRON_RIGHT, color=ft.Colors.GREEN_800, size=20)
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            bgcolor="#E8F5E9", padding=ft.Padding(12, 8, 12, 8), border_radius=10, width=340,
+            border=ft.Border.all(width=1, color="#A5D6A7"),
+            on_click=abrir_tela_economia
+        )
+
         lista_consultas = ft.ListView(expand=1, spacing=10, padding=5)
 
         for c in dados_historico_consultas:
@@ -806,9 +808,11 @@ async def main(page: ft.Page):
         conteudo = ft.Container(
             content=ft.Column([
                 ft.Text("📋 Histórico de Consultas", size=22, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL),
-                ft.Container(height=10),
-                ft.Container(content=lista_consultas, width=340, height=450),
-                ft.TextButton("Voltar", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
+                ft.Container(height=5),
+                aba_economia,
+                ft.Container(height=5),
+                ft.Container(content=lista_consultas, width=340, height=390),
+                ft.TextButton("Voltar para o Menu", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
             width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
         )
