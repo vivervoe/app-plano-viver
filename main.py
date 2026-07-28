@@ -113,23 +113,23 @@ def main(page: ft.Page):
 
     # --- ARMAZENAMENTO LOCAL / PWA (SUPORTE OFFLINE) ---
     dados_padrao_carteirinhas = {
-        "titular": {"nome": "JOÃO DA SILVA", "numero": "001.2345.678900-12", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👨‍💼", "status": "ATIVO", "vencimento": "10/08/2026"},
+        "titular": {"nome": "JOÃO DA SILVA", "numero": "001.2345.678900-12", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👤", "status": "ATIVO", "vencimento": "10/08/2026"},
         "dep1": {"nome": "PEDRO DA SILVA (DEP)", "numero": "001.2345.678900-13", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👦", "status": "ATIVO", "vencimento": "10/08/2026"},
-        "dep2": {"nome": "MARIA DA SILVA (DEP)", "numero": "001.2345.678900-14", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👩", "status": "ATIVO", "vencimento": "10/08/2026"}
+        "dep2": {"nome": "MARIA DA SILVA (DEP)", "numero": "001.2345.678900-14", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👧", "status": "ATIVO", "vencimento": "10/08/2026"}
     }
 
     # Restaura dados salvos localmente se existirem
-    if page.client_storage.contains_key("dados_carteirinhas"):
+    if page.shared_preferences.contains_key("dados_carteirinhas"):
         try:
-            dados_carteirinhas = page.client_storage.get("dados_carteirinhas")
+            dados_carteirinhas = page.shared_preferences.get("dados_carteirinhas")
         except Exception:
             dados_carteirinhas = dados_padrao_carteirinhas
     else:
         dados_carteirinhas = dados_padrao_carteirinhas
-        page.client_storage.set("dados_carteirinhas", dados_carteirinhas)
+        page.shared_preferences.set("dados_carteirinhas", dados_carteirinhas)
 
     def salvar_carteirinhas_localment():
-        page.client_storage.set("dados_carteirinhas", dados_carteirinhas)
+        page.shared_preferences.set("dados_carteirinhas", dados_carteirinhas)
 
     dados_historico_consultas = [
         {"data": "10/05/2026", "especialidade": "Cardiologia", "medico": "Dr. Fernando Rosa", "local": "Prontocor Clínica", "valor": 230.00, "particular": 450.00, "status": "Realizada"},
@@ -152,11 +152,10 @@ def main(page: ft.Page):
         else:
             mensagem = f"Olá! Sou o {primeiro_nome}. Estou usando o aplicativo do Plano Viver e preciso de ajuda com o suporte."
             
-        # URL da API do WhatsApp compatível universalmente com aplicativos móveis e desktop
         url = f"https://api.whatsapp.com/send?phone={numero_whatsapp}&text={requests.utils.quote(mensagem)}"
         page.launch_url(url)
 
-    # --- MELHORIA: ABRIR GOOGLE MAPS DIRECTAMENTE ---
+    # --- MELHORIA: ABRIR GOOGLE MAPS DIRETO ---
     def abrir_google_maps(endereco):
         url_maps = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(endereco)}"
         page.launch_url(url_maps)
@@ -506,7 +505,7 @@ def main(page: ft.Page):
                 ], spacing=8),
                 ft.Column([
                     ft.Text("Próx. Vencimento", size=8.5, color="grey600"),
-                    ft.Text(dados_p["vencimento"], size=10, weight=ft.FontWeight.BOLD, color="grey800")
+                    ft.Text(dados_p.get("vencimento", "10/08/2026"), size=10, weight=ft.FontWeight.BOLD, color="grey800")
                 ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.END)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             bgcolor="white", padding=ft.Padding(12, 8, 12, 8), border_radius=12, width=350,
@@ -677,7 +676,6 @@ def main(page: ft.Page):
             cartao_animado.content = frente_ui if mostrando_frente[0] else verso_ui
             cartao_animado.update()
 
-        # --- MELHORIA: GERAR E BAIXAR PDF NA WEB/RENDER ---
         def baixar_carteirinha_pdf(e):
             try:
                 dados_c = dados_carteirinhas.get(perfil_atual["chave"], dados_carteirinhas["titular"])
@@ -738,9 +736,8 @@ def main(page: ft.Page):
 
                 doc.build(elementos)
 
-                # Serve o arquivo via URL para download no navegador do usuário
                 page.launch_url(f"/static/{nome_arquivo}")
-                exibir_snackbar(f"✅ Carteirinha gerada! Baixando...")
+                exibir_snackbar("✅ Carteirinha gerada! Baixando...")
 
             except Exception as err:
                 print(f"Erro PDF: {err}", flush=True)
@@ -799,7 +796,7 @@ def main(page: ft.Page):
         mudar_tela(conteudo)
 
     # =========================================================================
-    # 5️⃣ TELA: REDE CREDENCIADA (COM INTEGRACAO MAPS/GPS)
+    # 5️⃣ TELA: REDE CREDENCIADA (COM INTEGRAÇÃO MAPS/GPS)
     # =========================================================================
     def abrir_tela_rede(e):
         lista_locais = ft.ListView(expand=1, spacing=10, padding=5)
@@ -840,7 +837,6 @@ def main(page: ft.Page):
                             ft.Divider(height=4, color="grey200"),
                             ft.Row([ft.Icon(ft.Icons.LOCATION_ON, size=12, color="grey500"), ft.Text(local["end"], size=9.5, color="grey500", width=240)]),
                             
-                            # --- BOTOES COM COMO CHEGAR (MAPS) ---
                             ft.Row([
                                 ft.TextButton(
                                     content=ft.Row([ft.Icon(ft.Icons.MAP, size=12, color=COR_PRINCIPAL), ft.Text("📍 Como Chegar", size=10.5, color=COR_PRINCIPAL)]), 
@@ -1047,6 +1043,7 @@ def main(page: ft.Page):
         os.remove(ARQUIVO_SESSAO)
     
     mostrar_tela_login()
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
