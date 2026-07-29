@@ -146,6 +146,7 @@ async def main(page: ft.Page):
         page.bgcolor = "#111827" if page.theme_mode == ft.ThemeMode.DARK else "#F1F5F9"
         await page.update_async() if hasattr(page, 'update_async') else page.update()
 
+    # --- FUNÇÃO DO WHATSAPP CORRIGIDA PARA CELULAR ---
     async def abrir_whatsapp(e, tipo_contato="suporte"):
         numero_whatsapp = "554730338021" 
         primeiro_nome = perfil_atual["nome"].split()[0].title()
@@ -155,12 +156,27 @@ async def main(page: ft.Page):
         else:
             mensagem = f"Olá! Sou o {primeiro_nome}. Estou usando o aplicativo do Plano Viver e preciso de ajuda com o suporte."
             
-        url = f"https://api.whatsapp.com/send?phone={numero_whatsapp}&text={urllib.parse.quote(mensagem)}"
-        await page.launch_url_async(url) if hasattr(page, 'launch_url_async') else page.launch_url(url)
+        texto_codificado = urllib.parse.quote(mensagem)
+        url_whatsapp = f"https://wa.me/{numero_whatsapp}?text={texto_codificado}"
+
+        try:
+            if hasattr(page, 'launch_url_async'):
+                await page.launch_url_async(url_whatsapp)
+            else:
+                page.launch_url(url_whatsapp)
+        except Exception as err:
+            print(f"Erro ao abrir WhatsApp: {err}", flush=True)
+            webbrowser.open(url_whatsapp)
 
     async def abrir_google_maps(endereco):
         url_maps = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(endereco)}"
-        await page.launch_url_async(url_maps) if hasattr(page, 'launch_url_async') else page.launch_url(url_maps)
+        try:
+            if hasattr(page, 'launch_url_async'):
+                await page.launch_url_async(url_maps)
+            else:
+                page.launch_url(url_maps)
+        except Exception:
+            webbrowser.open(url_maps)
 
     async def exibir_snackbar(mensagem):
         snack = ft.SnackBar(
@@ -244,7 +260,6 @@ async def main(page: ft.Page):
 
         divisoria_linha = ft.Container(width=100, height=1, bgcolor="grey400")
 
-        # LOGO PNG NA TELA DE LOGIN (CORRIGIDO: "contain")
         logo_login = ft.Image(src="logo.png", width=180, height=70, fit="contain")
 
         conteudo = ft.Container(
@@ -396,8 +411,16 @@ async def main(page: ft.Page):
             primeiro_nome = perfil_atual["nome"].split()[0].title()
             mensagem = f"Olá! Me chamo {primeiro_nome}, uso o app do Plano Viver e gostaria de solicitar a inclusão de um novo dependente no meu plano."
             
-            url = f"https://api.whatsapp.com/send?phone={numero_whatsapp}&text={urllib.parse.quote(mensagem)}"
-            await page.launch_url_async(url) if hasattr(page, 'launch_url_async') else page.launch_url(url)
+            texto_codificado = urllib.parse.quote(mensagem)
+            url_whatsapp = f"https://wa.me/{numero_whatsapp}?text={texto_codificado}"
+            
+            try:
+                if hasattr(page, 'launch_url_async'):
+                    await page.launch_url_async(url_whatsapp)
+                else:
+                    page.launch_url(url_whatsapp)
+            except Exception:
+                webbrowser.open(url_whatsapp)
 
         dados_carteirinhas_loc = await page.shared_preferences.get("dados_carteirinhas") if await page.shared_preferences.contains_key("dados_carteirinhas") else dados_carteirinhas
         if not isinstance(dados_carteirinhas_loc, dict):
@@ -422,7 +445,6 @@ async def main(page: ft.Page):
 
         conteudo = ft.Container(
             content=ft.Column([
-                # LOGO CORRIGIDO PARA STRING "contain"
                 ft.Image(src="logo.png", width=160, height=60, fit="contain"),
                 ft.Container(height=10), 
                 ft.Text("Quem está utilizando o app agora?", size=14, color="grey700"), 
@@ -464,7 +486,6 @@ async def main(page: ft.Page):
             )
         ])
 
-        # LOGO PNG NO CABEÇALHO DO MENU (CORRIGIDO: "contain")
         logo_menu = ft.Image(src="logo.png", width=130, height=45, fit="contain")
 
         topo_verde = ft.Container(
@@ -533,9 +554,16 @@ async def main(page: ft.Page):
                 on_click=acao_click
             )
 
+        # Handlers assíncronos explícitos para acionar o WhatsApp
+        async def acao_assistente(e):
+            await abrir_whatsapp(e, "assistente")
+
+        async def acao_suporte(e):
+            await abrir_whatsapp(e, "suporte")
+
         grid_botoes = ft.Column([
             ft.Row([
-                criar_cartao_menu_2colunas(ft.Icons.SUPPORT_AGENT, "Assistente Saúde", "Fale no WhatsApp", lambda e: abrir_whatsapp(e, "assistente"), destacar=True), 
+                criar_cartao_menu_2colunas(ft.Icons.SUPPORT_AGENT, "Assistente Saúde", "Fale no WhatsApp", acao_assistente, destacar=True), 
                 criar_cartao_menu_2colunas(ft.Icons.MONETIZATION_ON, "Meus Boletos", "Faturas e PIX", abrir_tela_boletos)
             ], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
             ft.Row([
@@ -551,7 +579,7 @@ async def main(page: ft.Page):
         barra_inferior = ft.Container(
             content=ft.Row([
                 ft.IconButton(icon=ft.Icons.CREDIT_CARD, icon_color=COR_PRINCIPAL, on_click=abrir_tela_carteirinha, tooltip="Carteirinha"), 
-                ft.IconButton(icon=ft.Icons.CHAT_BUBBLE, icon_color=COR_PRINCIPAL, on_click=lambda e: abrir_whatsapp(e, "suporte"), tooltip="Atendimento"), 
+                ft.IconButton(icon=ft.Icons.CHAT_BUBBLE, icon_color=COR_PRINCIPAL, on_click=acao_suporte, tooltip="Atendimento"), 
                 ft.IconButton(icon=ft.Icons.SUPERVISOR_ACCOUNT, icon_color=COR_PRINCIPAL, on_click=mostrar_tela_perfis, tooltip="Trocar Perfil"), 
                 ft.IconButton(icon=ft.Icons.LOGOUT, icon_color=ft.Colors.RED_600, on_click=encerrar_sessao, tooltip="Sair")
             ], alignment=ft.MainAxisAlignment.SPACE_AROUND), 
@@ -719,7 +747,10 @@ async def main(page: ft.Page):
 
                 doc.build(elementos)
 
-                await page.launch_url_async(f"/static/{nome_arquivo}") if hasattr(page, 'launch_url_async') else page.launch_url(f"/static/{nome_arquivo}")
+                if hasattr(page, 'launch_url_async'):
+                    await page.launch_url_async(f"/static/{nome_arquivo}")
+                else:
+                    page.launch_url(f"/static/{nome_arquivo}")
                 await exibir_snackbar("✅ Carteirinha gerada! Baixando...")
 
             except Exception as err:
