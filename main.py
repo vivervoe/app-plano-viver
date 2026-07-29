@@ -14,7 +14,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # =========================================================================
-# ⚙️ CONFIGURAÇÕES DA API DO ASAAS (USANDO VARIÁVEIS DE AMBIENTE)
+# ⚙️ CONFIGURAÇÕES DA API DO ASAAS
 # =========================================================================
 ASAAS_API_URL = os.environ.get("ASAAS_API_URL", "https://sandbox.asaas.com/api/v3")
 ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY", "").strip()
@@ -27,7 +27,6 @@ HEADERS = {
 ARQUIVO_SESSAO = "sessao_viver.json"
 PASTA_PDFS = "pdfs_gerados"
 
-# Garante que a pasta para servir arquivos estáticos/PDFs exista
 if not os.path.exists(PASTA_PDFS):
     os.makedirs(PASTA_PDFS)
 
@@ -39,16 +38,12 @@ def obtener_boletos_asaas(cpf_cliente, nome_cliente="João da Silva"):
 
     try:
         cpf_limpo = "".join([c for c in str(cpf_cliente) if c.isdigit()])
-        
-        print(f"\n[DIAGNÓSTICO] Consultando API Asaas...", flush=True)
         resposta = requests.get(f"{ASAAS_API_URL}/customers", headers=HEADERS, params={"limit": 100}, timeout=10)
         
         if resposta.status_code != 200:
-            print(f"[ERRO API] Status Code: {resposta.status_code} - Resposta: {resposta.text}", flush=True)
             return []
             
         clientes = resposta.json().get("data", [])
-        
         cliente_encontrado = None
         for cli in clientes:
             cpf_cli = "".join([c for c in str(cli.get("cpfCnpj", "")) if c.isdigit()])
@@ -62,7 +57,6 @@ def obtener_boletos_asaas(cpf_cliente, nome_cliente="João da Silva"):
             return []
             
         cliente_id = cliente_encontrado["id"]
-        
         resp_cobrancas = requests.get(
             f"{ASAAS_API_URL}/payments", 
             headers=HEADERS, 
@@ -112,14 +106,13 @@ async def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.bgcolor = "#F1F5F9"
 
-    # --- ARMAZENAMENTO LOCAL / PWA (SUPORTE OFFLINE) ---
+    # --- ARMAZENAMENTO LOCAL ---
     dados_padrao_carteirinhas = {
         "titular": {"nome": "JOÃO DA SILVA", "numero": "001.2345.678900-12", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👤", "status": "ATIVO", "vencimento": "10/08/2026"},
         "dep1": {"nome": "PEDRO DA SILVA (DEP)", "numero": "001.2345.678900-13", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👦", "status": "ATIVO", "vencimento": "10/08/2026"},
         "dep2": {"nome": "MARIA DA SILVA (DEP)", "numero": "001.2345.678900-14", "plano": "VIVER GLOBAL (PLANO PRATA)", "validade": "12/2028", "avatar": "👧", "status": "ATIVO", "vencimento": "10/08/2026"}
     }
 
-    # Restaura dados salvos localmente se existirem (Assíncrono)
     try:
         has_key = await page.shared_preferences.contains_key("dados_carteirinhas")
         if has_key:
@@ -132,9 +125,6 @@ async def main(page: ft.Page):
     except Exception:
         dados_carteirinhas = dados_padrao_carteirinhas
 
-    async def salvar_carteirinhas_localment():
-        await page.shared_preferences.set("dados_carteirinhas", dados_carteirinhas)
-
     dados_historico_consultas = [
         {"data": "10/05/2026", "especialidade": "Cardiologia", "medico": "Dr. Fernando Rosa", "local": "Prontocor Clínica", "valor": 230.00, "particular": 450.00, "status": "Realizada"},
         {"data": "22/03/2026", "especialidade": "Oftalmologia", "medico": "Dra. Camila Ribeiro", "local": "Hospital Sadalla", "valor": 240.00, "particular": 400.00, "status": "Realizada"},
@@ -146,7 +136,6 @@ async def main(page: ft.Page):
         page.bgcolor = "#111827" if page.theme_mode == ft.ThemeMode.DARK else "#F1F5F9"
         await page.update_async() if hasattr(page, 'update_async') else page.update()
 
-    # --- FUNÇÃO DO WHATSAPP CORRIGIDA PARA CELULAR ---
     async def abrir_whatsapp(e, tipo_contato="suporte"):
         numero_whatsapp = "554730338021" 
         primeiro_nome = perfil_atual["nome"].split()[0].title()
@@ -164,8 +153,7 @@ async def main(page: ft.Page):
                 await page.launch_url_async(url_whatsapp)
             else:
                 page.launch_url(url_whatsapp)
-        except Exception as err:
-            print(f"Erro ao abrir WhatsApp: {err}", flush=True)
+        except Exception:
             webbrowser.open(url_whatsapp)
 
     async def abrir_google_maps(endereco):
@@ -187,9 +175,24 @@ async def main(page: ft.Page):
         page.open(snack)
         await page.update_async() if hasattr(page, 'update_async') else page.update()
 
+    # =========================================================================
+    # 🎨 CONTAINER DE TRANSIÇÃO ENTRE TELAS (ANIMATED SWITCHER)
+    # =========================================================================
+    conteudo_principal = ft.Container()
+    
+    transicao_telas = ft.AnimatedSwitcher(
+        content=conteudo_principal,
+        transition=ft.AnimatedSwitcherTransition.SCALE, # Transição com escala e fade suave
+        duration=350,
+        reverse_duration=250,
+        switch_in_curve=ft.AnimationCurve.EASE_OUT_CUBIC,
+        switch_out_curve=ft.AnimationCurve.EASE_IN_CUBIC
+    )
+
+    page.add(transicao_telas)
+
     async def mudar_tela(novo_conteudo):
-        page.clean()
-        page.add(novo_conteudo)
+        transicao_telas.content = novo_conteudo
         await page.update_async() if hasattr(page, 'update_async') else page.update()
 
     # --- SESSÃO ---
@@ -259,10 +262,10 @@ async def main(page: ft.Page):
         )
 
         divisoria_linha = ft.Container(width=100, height=1, bgcolor="grey400")
-
         logo_login = ft.Image(src="logo.png", width=180, height=70, fit="contain")
 
         conteudo = ft.Container(
+            key="login_screen",
             content=ft.Column([
                 ft.Row([ft.IconButton(icon=ft.Icons.DARK_MODE_OUTLINED, on_click=alternar_tema)], alignment=ft.MainAxisAlignment.END),
                 logo_login,
@@ -315,6 +318,7 @@ async def main(page: ft.Page):
             lista_avisos.controls.append(card_notif)
 
         conteudo = ft.Container(
+            key="notif_screen",
             content=ft.Column([
                 ft.Text("🔔 Central de Avisos", size=22, color=COR_PRINCIPAL, weight=ft.FontWeight.BOLD),
                 ft.Container(height=10),
@@ -378,6 +382,7 @@ async def main(page: ft.Page):
             lista_detalhada.controls.append(card_item)
 
         conteudo = ft.Container(
+            key="economia_screen",
             content=ft.Column([
                 ft.Text("📈 Economia com o Plano", size=22, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL),
                 ft.Container(height=5),
@@ -399,7 +404,6 @@ async def main(page: ft.Page):
                 dados_carteirinhas_loc = dados_carteirinhas
                 
             p_info = dados_carteirinhas_loc.get(chave, dados_carteirinhas_loc.get("titular"))
-            
             perfil_atual["chave"] = chave
             perfil_atual["nome"] = p_info["nome"]
             
@@ -435,7 +439,9 @@ async def main(page: ft.Page):
                         border_radius=20, 
                         border=ft.Border.all(width=2, color=COR_PRINCIPAL if k == perfil_atual["chave"] else "#CBD5E1"), 
                         bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST if k == perfil_atual["chave"] else "transparent",
-                        alignment=ft.Alignment(0, 0)
+                        alignment=ft.Alignment(0, 0),
+                        ink=True,  # Feedback tátil ao clicar no avatar
+                        animate_scale=ft.Animation(150, ft.AnimationCurve.EASE_IN_OUT)
                     ), 
                     ft.Text(v["nome"].split()[0].title(), size=11, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL if k == perfil_atual["chave"] else "grey800")
                 ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=5), 
@@ -444,6 +450,7 @@ async def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.CENTER, spacing=15, wrap=True)
 
         conteudo = ft.Container(
+            key="perfis_screen",
             content=ft.Column([
                 ft.Image(src="logo.png", width=160, height=60, fit="contain"),
                 ft.Container(height=10), 
@@ -538,6 +545,7 @@ async def main(page: ft.Page):
             padding=0
         )
 
+        # ✨ CRIADOR DE BOTÕES COM EFEITO RIPPLE E ANIMAÇÃO DE ESCALA NO CLIQUE
         def criar_cartao_menu_2colunas(icone, titulo, subtexto, acao_click, destacar=False):
             sombra_padrao = ft.BoxShadow(blur_radius=6, spread_radius=1, color="grey200", offset=ft.Offset(0, 4))
             return ft.Container(
@@ -551,10 +559,11 @@ async def main(page: ft.Page):
                 border_radius=14, 
                 border=ft.Border.all(width=1.5, color=COR_BORDA_GOLD if destacar else "#E2E8F0"),
                 shadow=sombra_padrao,
+                ink=True,  # Habilita animação de onda ao tocar (Efeito Material)
+                animate_scale=ft.Animation(150, ft.AnimationCurve.EASE_OUT), # Micro-animação suave de toque
                 on_click=acao_click
             )
 
-        # Handlers assíncronos explícitos para acionar o WhatsApp
         async def acao_assistente(e):
             await abrir_whatsapp(e, "assistente")
 
@@ -588,6 +597,7 @@ async def main(page: ft.Page):
         )
         
         layout_celular = ft.Container(
+            key="menu_screen",
             content=ft.Column([
                 topo_verde, 
                 ft.Container(
@@ -758,6 +768,7 @@ async def main(page: ft.Page):
                 await exibir_snackbar("❌ Erro ao gerar PDF. Verifique os módulos instalados.")
 
         conteudo = ft.Container(
+            key="carteirinha_screen",
             content=ft.Column([
                 ft.Text("💳 Carteirinha Digital", size=22, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL), 
                 ft.Container(height=10), 
@@ -793,6 +804,7 @@ async def main(page: ft.Page):
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             bgcolor="#E8F5E9", padding=ft.Padding(12, 8, 12, 8), border_radius=10, width=340,
             border=ft.Border.all(width=1, color="#A5D6A7"),
+            ink=True,
             on_click=abrir_tela_economia
         )
 
@@ -819,6 +831,7 @@ async def main(page: ft.Page):
             lista_consultas.controls.append(card)
 
         conteudo = ft.Container(
+            key="historico_screen",
             content=ft.Column([
                 ft.Text("📋 Histórico de Consultas", size=22, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL),
                 ft.Container(height=5),
@@ -913,54 +926,33 @@ async def main(page: ft.Page):
         )
 
         dropdown_bairro = ft.Dropdown(
-            label="Bairro",
-            value="Todos os bairros",
-            width=165,
-            border_radius=10,
-            border_color=COR_PRINCIPAL,
+            label="Bairro", value="Todos os bairros", width=165, border_radius=10, border_color=COR_PRINCIPAL,
             options=[
-                ft.dropdown.Option("Todos os bairros"),
-                ft.dropdown.Option("Centro"),
-                ft.dropdown.Option("Aventureiro"),
-                ft.dropdown.Option("Bom Retiro"),
-                ft.dropdown.Option("Floresta"),
-                ft.dropdown.Option("Costa e Silva"),
-                ft.dropdown.Option("América"),
-                ft.dropdown.Option("Anita Garibaldi"),
-                ft.dropdown.Option("Vila Nova"),
-                ft.dropdown.Option("Iririú"),
+                ft.dropdown.Option("Todos os bairros"), ft.dropdown.Option("Centro"), ft.dropdown.Option("Aventureiro"),
+                ft.dropdown.Option("Bom Retiro"), ft.dropdown.Option("Floresta"), ft.dropdown.Option("Costa e Silva"),
+                ft.dropdown.Option("América"), ft.dropdown.Option("Anita Garibaldi"), ft.dropdown.Option("Vila Nova"), ft.dropdown.Option("Iririú"),
             ]
         )
         dropdown_bairro.on_change = renderizar_lista
 
         dropdown_categoria = ft.Dropdown(
-            label="Categoria",
-            value="Todas as categorias",
-            width=165,
-            border_radius=10,
-            border_color=COR_PRINCIPAL,
+            label="Categoria", value="Todas as categorias", width=165, border_radius=10, border_color=COR_PRINCIPAL,
             options=[
-                ft.dropdown.Option("Todas as categorias"),
-                ft.dropdown.Option("Consultas"),
-                ft.dropdown.Option("Exames"),
-                ft.dropdown.Option("Dentista"),
-                ft.dropdown.Option("Farmácia"),
-                ft.dropdown.Option("Cirurgias"),
+                ft.dropdown.Option("Todas as categorias"), ft.dropdown.Option("Consultas"), ft.dropdown.Option("Exames"),
+                ft.dropdown.Option("Dentista"), ft.dropdown.Option("Farmácia"), ft.dropdown.Option("Cirurgias"),
             ]
         )
         dropdown_categoria.on_change = renderizar_lista
 
         painel_filtros = ft.Column([
             campo_pesquisa,
-            ft.Row([
-                dropdown_bairro,
-                dropdown_categoria
-            ], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+            ft.Row([dropdown_bairro, dropdown_categoria], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
         ], spacing=8, width=340)
 
         await renderizar_lista()
 
         conteudo = ft.Container(
+            key="rede_screen",
             content=ft.Column([
                 ft.Text("📍 Rede Credenciada", size=22, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL), 
                 painel_filtros, 
@@ -978,6 +970,7 @@ async def main(page: ft.Page):
     async def abrir_tela_boletos(e=None):
         progresso = ft.ProgressRing(color=COR_PRINCIPAL)
         carregando = ft.Container(
+            key="loading_boletos",
             content=ft.Column([
                 progresso, 
                 ft.Text("Buscando faturas no Asaas...", italic=True)
@@ -1080,6 +1073,7 @@ async def main(page: ft.Page):
         coluna_boletos = ft.ListView(controls=lista_cards, expand=1, spacing=15, padding=5)
         
         conteudo = ft.Container(
+            key="boletos_screen",
             content=ft.Column([
                 ft.Text("💵 Meus Boletos & PIX", size=24, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL), 
                 ft.Container(content=coluna_boletos, width=340, height=450), 
@@ -1100,7 +1094,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     ft.app(
         target=main,
-        assets_dir="assets",  # Aponta para a pasta de imagens assets
+        assets_dir="assets",
         host="0.0.0.0",
         port=port
     )
