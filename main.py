@@ -264,12 +264,12 @@ async def main(page: ft.Page):
 
         divisoria_linha = ft.Container(width=100, height=1, bgcolor="grey400")
         
-        # 🟢 LOGO DE LOGIN (AUMENTADA E COM PROPORÇÃO DESTAQUE)
+        # 🟢 LOGO DE LOGIN (CORRIGIDO PARA BoxFit.CONTAIN)
         logo_login = ft.Image(
             src="logo.png", 
             width=240, 
             height=100, 
-            fit=ft.ImageFit.CONTAIN
+            fit=ft.BoxFit.CONTAIN
         )
 
         conteudo = ft.Container(
@@ -458,12 +458,12 @@ async def main(page: ft.Page):
         conteudo = ft.Container(
             key="perfis_screen",
             content=ft.Column([
-                # 🟢 LOGO DE PERFIS (AUMENTADA)
+                # 🟢 LOGO DE PERFIS (CORRIGIDO PARA BoxFit.CONTAIN)
                 ft.Image(
                     src="logo.png", 
                     width=200, 
                     height=80, 
-                    fit=ft.ImageFit.CONTAIN
+                    fit=ft.BoxFit.CONTAIN
                 ),
                 ft.Container(height=10), 
                 ft.Text("Quem está utilizando o app agora?", size=14, color="grey700"), 
@@ -505,12 +505,12 @@ async def main(page: ft.Page):
             )
         ])
 
-        # 🟢 LOGO DO MENU (AUMENTADA E EM COR BRANCA PARA CONTRASTE PERFEITO)
+        # 🟢 LOGO DO MENU (CORRIGIDO PARA BoxFit.CONTAIN)
         logo_menu = ft.Image(
             src="logo.png", 
             width=160, 
             height=50, 
-            fit=ft.ImageFit.CONTAIN,
+            fit=ft.BoxFit.CONTAIN,
             color=ft.Colors.WHITE
         )
 
