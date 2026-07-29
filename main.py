@@ -6,6 +6,7 @@ import webbrowser
 import json
 import os
 import urllib.parse  # Usando urllib para codificação de URL
+import asyncio  # Néssario para não travar a interface do Flet
 
 # Imports para geração do PDF da Carteirinha
 from reportlab.lib.pagesizes import A4
@@ -176,17 +177,17 @@ async def main(page: ft.Page):
         await page.update_async() if hasattr(page, 'update_async') else page.update()
 
     # =========================================================================
-    # 🎨 CONTAINER DE TRANSIÇÃO ENTRE TELAS (ANIMATED SWITCHER)
+    # 🎨 CONTAINER DE TRANSIÇÃO LEVE E FLUIDA (FADE)
     # =========================================================================
     conteudo_principal = ft.Container()
     
     transicao_telas = ft.AnimatedSwitcher(
         content=conteudo_principal,
-        transition=ft.AnimatedSwitcherTransition.SCALE, # Transição com escala e fade suave
-        duration=350,
-        reverse_duration=250,
-        switch_in_curve=ft.AnimationCurve.EASE_OUT_CUBIC,
-        switch_out_curve=ft.AnimationCurve.EASE_IN_CUBIC
+        transition=ft.AnimatedSwitcherTransition.FADE,  # FADE é muito mais leve e fluido
+        duration=200,                                   # 200ms garante rápida resposta
+        reverse_duration=150,
+        switch_in_curve=ft.AnimationCurve.EASE_OUT,
+        switch_out_curve=ft.AnimationCurve.EASE_IN
     )
 
     page.add(transicao_telas)
@@ -241,7 +242,7 @@ async def main(page: ft.Page):
 
         async def autenticar_biometria(e):
             await exibir_snackbar("👆 Autenticando por Biometria / Face ID...")
-            time.sleep(0.8)
+            await asyncio.sleep(0.5)  # Não trava a UI durante a simulação
             await processar_pos_login(CPF_TESTE)
 
         btn_entrar = ft.FilledButton(
@@ -274,7 +275,7 @@ async def main(page: ft.Page):
                 ft.Row([divisoria_linha, ft.Text("ou", color="grey500", size=11), divisoria_linha], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
                 btn_biometria
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, spacing=8),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16, padding=10
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16, padding=10
         )
         await mudar_tela(conteudo)
 
@@ -325,7 +326,7 @@ async def main(page: ft.Page):
                 ft.Container(content=lista_avisos, width=340, height=480), 
                 ft.TextButton("Voltar para o Menu", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(conteudo)
 
@@ -358,8 +359,7 @@ async def main(page: ft.Page):
                 end=ft.Alignment(1, 1),
                 colors=[COR_PRINCIPAL, COR_GRADIENT_FIM]
             ),
-            padding=18, border_radius=16, width=340,
-            shadow=ft.BoxShadow(blur_radius=8, color="grey300", offset=ft.Offset(0, 4))
+            padding=18, border_radius=16, width=340
         )
 
         lista_detalhada = ft.ListView(expand=1, spacing=10, padding=5)
@@ -392,7 +392,7 @@ async def main(page: ft.Page):
                 ft.Container(content=lista_detalhada, width=340, height=330),
                 ft.TextButton("Voltar para Histórico", icon=ft.Icons.ARROW_BACK, on_click=abrir_tela_historico)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(conteudo)
 
@@ -440,8 +440,7 @@ async def main(page: ft.Page):
                         border=ft.Border.all(width=2, color=COR_PRINCIPAL if k == perfil_atual["chave"] else "#CBD5E1"), 
                         bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST if k == perfil_atual["chave"] else "transparent",
                         alignment=ft.Alignment(0, 0),
-                        ink=True,  # Feedback tátil ao clicar no avatar
-                        animate_scale=ft.Animation(150, ft.AnimationCurve.EASE_IN_OUT)
+                        ink=True
                     ), 
                     ft.Text(v["nome"].split()[0].title(), size=11, weight=ft.FontWeight.BOLD, color=COR_PRINCIPAL if k == perfil_atual["chave"] else "grey800")
                 ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=5), 
@@ -469,7 +468,7 @@ async def main(page: ft.Page):
                 ft.Container(height=10),
                 ft.TextButton("Voltar para o Menu", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(conteudo)
 
@@ -533,8 +532,7 @@ async def main(page: ft.Page):
                 ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.END)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             bgcolor="white", padding=ft.Padding(12, 8, 12, 8), border_radius=12, width=350,
-            border=ft.Border.all(width=1, color="#CBD5E1"),
-            shadow=ft.BoxShadow(blur_radius=4, color="grey200", offset=ft.Offset(0, 2))
+            border=ft.Border.all(width=1, color="#CBD5E1")
         )
 
         texto_saudacao = ft.Container(
@@ -545,9 +543,8 @@ async def main(page: ft.Page):
             padding=0
         )
 
-        # ✨ CRIADOR DE BOTÕES COM EFEITO RIPPLE E ANIMAÇÃO DE ESCALA NO CLIQUE
+        # Botão otimizado com resposta por toque sem engasgos
         def criar_cartao_menu_2colunas(icone, titulo, subtexto, acao_click, destacar=False):
-            sombra_padrao = ft.BoxShadow(blur_radius=6, spread_radius=1, color="grey200", offset=ft.Offset(0, 4))
             return ft.Container(
                 content=ft.Column([
                     ft.Icon(icone, size=30, color="white" if destacar else COR_PRINCIPAL), 
@@ -558,9 +555,7 @@ async def main(page: ft.Page):
                 bgcolor=COR_PRINCIPAL if destacar else "white", 
                 border_radius=14, 
                 border=ft.Border.all(width=1.5, color=COR_BORDA_GOLD if destacar else "#E2E8F0"),
-                shadow=sombra_padrao,
-                ink=True,  # Habilita animação de onda ao tocar (Efeito Material)
-                animate_scale=ft.Animation(150, ft.AnimationCurve.EASE_OUT), # Micro-animação suave de toque
+                ink=True,
                 on_click=acao_click
             )
 
@@ -610,7 +605,7 @@ async def main(page: ft.Page):
                 ), 
                 barra_inferior
             ], spacing=0, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(layout_celular)
 
@@ -648,8 +643,7 @@ async def main(page: ft.Page):
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             gradient=degrade_carteirinha,
-            width=340, height=195, border_radius=16, padding=18,
-            shadow=ft.BoxShadow(blur_radius=12, color="grey400", offset=ft.Offset(0, 6))
+            width=340, height=195, border_radius=16, padding=18
         )
 
         verso_ui = ft.Container(
@@ -679,17 +673,14 @@ async def main(page: ft.Page):
                 ], alignment=ft.MainAxisAlignment.CENTER)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             gradient=degrade_carteirinha,
-            width=340, height=195, border_radius=16, padding=16,
-            shadow=ft.BoxShadow(blur_radius=12, color="grey400", offset=ft.Offset(0, 6))
+            width=340, height=195, border_radius=16, padding=16
         )
 
         cartao_animado = ft.AnimatedSwitcher(
             content=frente_ui,
-            transition=ft.AnimatedSwitcherTransition.SCALE,
-            duration=400,
-            reverse_duration=400,
-            switch_in_curve=ft.AnimationCurve.EASE_IN_OUT,
-            switch_out_curve=ft.AnimationCurve.EASE_IN_OUT
+            transition=ft.AnimatedSwitcherTransition.FADE,
+            duration=300,
+            reverse_duration=200
         )
 
         async def girar_cartao_animado(e):
@@ -755,7 +746,7 @@ async def main(page: ft.Page):
                 elementos.append(Spacer(1, 30))
                 elementos.append(Paragraph("Documento gerado digitalmente pelo aplicativo Plano Viver.", estilo_rodape))
 
-                doc.build(elementos)
+                await asyncio.to_thread(doc.build, elementos)
 
                 if hasattr(page, 'launch_url_async'):
                     await page.launch_url_async(f"/static/{nome_arquivo}")
@@ -781,7 +772,7 @@ async def main(page: ft.Page):
                 ft.Container(height=10), 
                 ft.TextButton("Voltar", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(conteudo)
 
@@ -825,8 +816,7 @@ async def main(page: ft.Page):
                         ft.Text(f"Valor Pago: R$ {c['valor']:.2f}", size=11, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_800)
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
                 ], spacing=3),
-                border_radius=12, padding=12, border=ft.Border.all(width=1, color="#E2E8F0"), bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
-                shadow=ft.BoxShadow(blur_radius=5, color="grey200", offset=ft.Offset(0, 3))
+                border_radius=12, padding=12, border=ft.Border.all(width=1, color="#E2E8F0"), bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST
             )
             lista_consultas.controls.append(card)
 
@@ -840,7 +830,7 @@ async def main(page: ft.Page):
                 ft.Container(content=lista_consultas, width=340, height=390),
                 ft.TextButton("Voltar para o Menu", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(conteudo)
 
@@ -897,8 +887,7 @@ async def main(page: ft.Page):
                                 )
                             ], alignment=ft.MainAxisAlignment.END, spacing=5)
                         ], spacing=3),
-                        border_radius=12, padding=10, border=ft.Border.all(width=1, color="#E2E8F0"), bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
-                        shadow=ft.BoxShadow(blur_radius=4, color="grey200", offset=ft.Offset(0, 2))
+                        border_radius=12, padding=10, border=ft.Border.all(width=1, color="#E2E8F0"), bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST
                     )
                     lista_locais.controls.append(card)
 
@@ -959,28 +948,28 @@ async def main(page: ft.Page):
                 ft.Container(content=lista_locais, width=340, height=390), 
                 ft.TextButton("Voltar para o Menu", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, spacing=10),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         
         await mudar_tela(conteudo)
 
     # =========================================================================
-    # 6️⃣ TELA: BOLETOS & ASAAS
+    # 6️⃣ TELA: BOLETOS & ASAAS (COM BUSCA NÃO-BLOQUEANTE)
     # =========================================================================
     async def abrir_tela_boletos(e=None):
-        progresso = ft.ProgressRing(color=COR_PRINCIPAL)
         carregando = ft.Container(
             key="loading_boletos",
             content=ft.Column([
-                progresso, 
+                ft.ProgressRing(color=COR_PRINCIPAL), 
                 ft.Text("Buscando faturas no Asaas...", italic=True)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, 
-            shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(carregando)
+        await asyncio.sleep(0.05)  # Permite que a UI exiba a tela de carregamento primeiro
 
-        faturas_asaas = obtener_boletos_asaas(CPF_TESTE, perfil_atual["nome"])
+        # Roda a requisição HTTP em background para não travar o Flet
+        faturas_asaas = await asyncio.to_thread(obtener_boletos_asaas, CPF_TESTE, perfil_atual["nome"])
         lista_cards = []
 
         async def copiar_texto(texto, msg):
@@ -988,7 +977,7 @@ async def main(page: ft.Page):
             await exibir_snackbar(msg)
 
         async def abrir_modal_pix(fatura_id, valor):
-            pix_dados = obtener_pix_asaas(fatura_id)
+            pix_dados = await asyncio.to_thread(obtener_pix_asaas, fatura_id)
             if pix_dados and pix_dados.get("payload"):
                 payload_pix = pix_dados["payload"]
                 qr_base64 = pix_dados.get("encodedImage", "")
@@ -1054,8 +1043,7 @@ async def main(page: ft.Page):
                         ft.Text(f"Valor: R$ {valor:.2f}", size=15, color="grey800"),
                         ft.Divider(height=10, color="grey300"),
                         ft.Row(botoes_acao)
-                    ]), border_radius=12, padding=15, border=ft.Border.all(width=1, color="#E2E8F0"), bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
-                    shadow=ft.BoxShadow(blur_radius=5, color="grey200", offset=ft.Offset(0, 3))
+                    ]), border_radius=12, padding=15, border=ft.Border.all(width=1, color="#E2E8F0"), bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST
                 )
                 lista_cards.append(card)
         else:
@@ -1079,7 +1067,7 @@ async def main(page: ft.Page):
                 ft.Container(content=coluna_boletos, width=340, height=450), 
                 ft.TextButton("Voltar", icon=ft.Icons.ARROW_BACK, on_click=mostrar_menu_inicial)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
-            width=390, height=740, bgcolor=ft.Colors.SURFACE, shadow=ft.BoxShadow(blur_radius=20, color="grey300", offset=ft.Offset(0, 8)), border_radius=16
+            width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(conteudo)
 
