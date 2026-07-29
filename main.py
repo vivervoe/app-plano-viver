@@ -6,7 +6,7 @@ import webbrowser
 import json
 import os
 import urllib.parse  # Usando urllib para codificação de URL
-import asyncio  # Néssario para não travar a interface do Flet
+import asyncio  # Necessário para não travar a interface do Flet
 
 # Imports para geração do PDF da Carteirinha
 from reportlab.lib.pagesizes import A4
@@ -183,8 +183,8 @@ async def main(page: ft.Page):
     
     transicao_telas = ft.AnimatedSwitcher(
         content=conteudo_principal,
-        transition=ft.AnimatedSwitcherTransition.FADE,  # FADE é muito mais leve e fluido
-        duration=200,                                   # 200ms garante rápida resposta
+        transition=ft.AnimatedSwitcherTransition.FADE,
+        duration=200,
         reverse_duration=150,
         switch_in_curve=ft.AnimationCurve.EASE_OUT,
         switch_out_curve=ft.AnimationCurve.EASE_IN
@@ -242,7 +242,7 @@ async def main(page: ft.Page):
 
         async def autenticar_biometria(e):
             await exibir_snackbar("👆 Autenticando por Biometria / Face ID...")
-            await asyncio.sleep(0.5)  # Não trava a UI durante a simulação
+            await asyncio.sleep(0.5)
             await processar_pos_login(CPF_TESTE)
 
         btn_entrar = ft.FilledButton(
@@ -263,7 +263,14 @@ async def main(page: ft.Page):
         )
 
         divisoria_linha = ft.Container(width=100, height=1, bgcolor="grey400")
-        logo_login = ft.Image(src="logo.png", width=180, height=70, fit="contain")
+        
+        # 🟢 LOGO DE LOGIN (AUMENTADA E COM PROPORÇÃO DESTAQUE)
+        logo_login = ft.Image(
+            src="logo.png", 
+            width=240, 
+            height=100, 
+            fit=ft.ImageFit.CONTAIN
+        )
 
         conteudo = ft.Container(
             key="login_screen",
@@ -451,7 +458,13 @@ async def main(page: ft.Page):
         conteudo = ft.Container(
             key="perfis_screen",
             content=ft.Column([
-                ft.Image(src="logo.png", width=160, height=60, fit="contain"),
+                # 🟢 LOGO DE PERFIS (AUMENTADA)
+                ft.Image(
+                    src="logo.png", 
+                    width=200, 
+                    height=80, 
+                    fit=ft.ImageFit.CONTAIN
+                ),
                 ft.Container(height=10), 
                 ft.Text("Quem está utilizando o app agora?", size=14, color="grey700"), 
                 ft.Container(height=15), 
@@ -492,7 +505,14 @@ async def main(page: ft.Page):
             )
         ])
 
-        logo_menu = ft.Image(src="logo.png", width=130, height=45, fit="contain")
+        # 🟢 LOGO DO MENU (AUMENTADA E EM COR BRANCA PARA CONTRASTE PERFEITO)
+        logo_menu = ft.Image(
+            src="logo.png", 
+            width=160, 
+            height=50, 
+            fit=ft.ImageFit.CONTAIN,
+            color=ft.Colors.WHITE
+        )
 
         topo_verde = ft.Container(
             content=ft.Row([
@@ -543,7 +563,6 @@ async def main(page: ft.Page):
             padding=0
         )
 
-        # Botão otimizado com resposta por toque sem engasgos
         def criar_cartao_menu_2colunas(icone, titulo, subtexto, acao_click, destacar=False):
             return ft.Container(
                 content=ft.Column([
@@ -966,9 +985,8 @@ async def main(page: ft.Page):
             width=390, height=740, bgcolor=ft.Colors.SURFACE, border_radius=16
         )
         await mudar_tela(carregando)
-        await asyncio.sleep(0.05)  # Permite que a UI exiba a tela de carregamento primeiro
+        await asyncio.sleep(0.05)
 
-        # Roda a requisição HTTP em background para não travar o Flet
         faturas_asaas = await asyncio.to_thread(obtener_boletos_asaas, CPF_TESTE, perfil_atual["nome"])
         lista_cards = []
 
